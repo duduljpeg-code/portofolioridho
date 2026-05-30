@@ -1,307 +1,67 @@
-        class Calculator {
-            constructor() {
-                this.display = document.getElementById('display');
-                this.history = document.getElementById('history');
-                this.memoryIndicator = document.getElementById('memoryIndicator');
-                this.currentInput = '0';
-                this.operator = null;
-                this.previousInput = null;
-                this.waitingForOperand = false;
-                this.memory = 0;
-                this.calculationHistory = '';
-                this.updateDisplay();
-                this.clearActiveOperators();
-            }
+  const cursor = document.getElementById('cursor');
+  const ring = document.getElementById('cursorRing');
+  let mouseX = 0, mouseY = 0, ringX = 0, ringY = 0;
 
-            updateDisplay() {
-                // Format large numbers
-                let displayValue = this.currentInput;
-                if (displayValue.length > 12) {
-                    const num = parseFloat(displayValue);
-                    if (Math.abs(num) >= 1e12 || (Math.abs(num) < 1e-6 && num !== 0)) {
-                        displayValue = num.toExponential(6);
-                    } else {
-                        displayValue = num.toPrecision(12).replace(/\.?0+$/, '');
-                    }
-                }
-                
-                this.display.value = displayValue;
-                this.display.classList.remove('error');
-                
-                // Update memory indicator
-                this.memoryIndicator.style.display = this.memory !== 0 ? 'block' : 'none';
-            }
+  document.addEventListener('mousemove', e => {
+    mouseX = e.clientX; mouseY = e.clientY;
+    cursor.style.left = mouseX + 'px';
+    cursor.style.top = mouseY + 'px';
+  });
 
-            updateHistory(text) {
-                this.history.textContent = text;
-            }
+  (function animateRing() {
+    ringX += (mouseX - ringX) * 0.15;
+    ringY += (mouseY - ringY) * 0.15;
+    ring.style.left = ringX + 'px';
+    ring.style.top = ringY + 'px';
+    requestAnimationFrame(animateRing);
+  })();
 
-            clearActiveOperators() {
-                document.querySelectorAll('.btn-operator').forEach(btn => {
-                    btn.classList.remove('active');
-                });
-            }
+  document.querySelectorAll('a, button, .project-card, .skill-item, .award-item').forEach(el => {
+    el.addEventListener('mouseenter', () => { ring.style.width = '60px'; ring.style.height = '60px'; ring.style.borderColor = 'var(--gold-light)'; });
+    el.addEventListener('mouseleave', () => { ring.style.width = '36px'; ring.style.height = '36px'; ring.style.borderColor = 'var(--gold)'; });
+  });
 
-            setActiveOperator(op) {
-                this.clearActiveOperators();
-                const operatorMap = {
-                    '+': 'add',
-                    '-': 'subtract', 
-                    '*': 'multiply',
-                    '/': 'divide'
-                };
-                const elementId = operatorMap[op];
-                if (elementId) {
-                    document.getElementById(elementId).classList.add('active');
-                }
-            }
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.15 });
+  reveals.forEach(el => observer.observe(el));
 
-            inputNumber(num) {
-                if (this.waitingForOperand) {
-                    this.currentInput = num;
-                    this.waitingForOperand = false;
-                } else {
-                    this.currentInput = this.currentInput === '0' ? num : this.currentInput + num;
-                }
-                this.updateDisplay();
-            }
-
-            inputDecimal() {
-                if (this.waitingForOperand) {
-                    this.currentInput = '0.';
-                    this.waitingForOperand = false;
-                } else if (this.currentInput.indexOf('.') === -1) {
-                    this.currentInput += '.';
-                }
-                this.updateDisplay();
-            }
-
-            inputOperator(nextOperator) {
-                const inputValue = parseFloat(this.currentInput);
-
-                if (this.previousInput === null) {
-                    this.previousInput = inputValue;
-                } else if (this.operator) {
-                    const currentValue = this.previousInput || 0;
-                    const newValue = this.performCalculation(this.operator, currentValue, inputValue);
-
-                    this.currentInput = String(newValue);
-                    this.previousInput = newValue;
-                    this.updateDisplay();
-                }
-
-                this.waitingForOperand = true;
-                this.operator = nextOperator;
-                this.setActiveOperator(nextOperator);
-                
-                // Update history
-                const operatorSymbol = this.getOperatorSymbol(nextOperator);
-                this.calculationHistory = `${this.previousInput} ${operatorSymbol}`;
-                this.updateHistory(this.calculationHistory);
-            }
-
-            getOperatorSymbol(operator) {
-                const symbols = {
-                    '+': '+',
-                    '-': '-',
-                    '*': '×',
-                    '/': '÷'
-                };
-                return symbols[operator] || operator;
-            }
-
-            performCalculation(operator, firstOperand, secondOperand) {
-                switch (operator) {
-                    case '+':
-                        return firstOperand + secondOperand;
-                    case '-':
-                        return firstOperand - secondOperand;
-                    case '*':
-                        return firstOperand * secondOperand;
-                    case '/':
-                        if (secondOperand === 0) {
-                            throw new Error('Cannot divide by zero');
-                        }
-                        return firstOperand / secondOperand;
-                    default:
-                        return secondOperand;
-                }
-            }
-
-            calculate() {
-                const inputValue = parseFloat(this.currentInput);
-
-                if (this.previousInput !== null && this.operator) {
-                    try {
-                        const result = this.performCalculation(this.operator, this.previousInput, inputValue);
-                        
-                        // Update history with complete calculation
-                        const operatorSymbol = this.getOperatorSymbol(this.operator);
-                        this.updateHistory(`${this.previousInput} ${operatorSymbol} ${inputValue} =`);
-                        
-                        this.currentInput = String(result);
-                        this.previousInput = null;
-                        this.operator = null;
-                        this.waitingForOperand = true;
-                        this.clearActiveOperators();
-                        this.updateDisplay();
-                    } catch (error) {
-                        this.showError(error.message);
-                    }
-                }
-            }
-
-            clearAll() {
-                this.currentInput = '0';
-                this.previousInput = null;
-                this.operator = null;
-                this.waitingForOperand = false;
-                this.calculationHistory = '';
-                this.clearActiveOperators();
-                this.updateHistory('');
-                this.updateDisplay();
-            }
-
-            clearEntry() {
-                this.currentInput = '0';
-                this.updateDisplay();
-            }
-
-            deleteLast() {
-                if (this.currentInput.length > 1) {
-                    this.currentInput = this.currentInput.slice(0, -1);
-                } else {
-                    this.currentInput = '0';
-                }
-                this.updateDisplay();
-            }
-
-            // Memory functions
-            addToMemory() {
-                this.memory += parseFloat(this.currentInput);
-                this.updateDisplay();
-            }
-
-            subtractFromMemory() {
-                this.memory -= parseFloat(this.currentInput);
-                this.updateDisplay();
-            }
-
-            recallMemory() {
-                this.currentInput = String(this.memory);
-                this.waitingForOperand = true;
-                this.updateDisplay();
-            }
-
-            clearMemory() {
-                this.memory = 0;
-                this.updateDisplay();
-            }
-
-            showError(message) {
-                this.display.value = message;
-                this.display.classList.add('error');
-                setTimeout(() => {
-                    this.clearAll();
-                }, 2000);
-            }
-        }
-
-        // Initialize calculator
-        let calc = new Calculator();
-
-        // Global functions for button clicks
-        function inputNumber(num) {
-            calc.inputNumber(num);
-        }
-
-        function inputOperator(op) {
-            calc.inputOperator(op);
-        }
-
-        function inputDecimal() {
-            calc.inputDecimal();
-        }
-
-        function calculate() {
-            calc.calculate();
-        }
-
-        function clearAll() {
-            calc.clearAll();
-        }
-
-        function clearEntry() {
-            calc.clearEntry();
-        }
-
-        function deleteLast() {
-            calc.deleteLast();
-        }
-
-        function addToMemory() {
-            calc.addToMemory();
-        }
-
-        function subtractFromMemory() {
-            calc.subtractFromMemory();
-        }
-
-        function recallMemory() {
-            calc.recallMemory();
-        }
-
-        function clearMemory() {
-            calc.clearMemory();
-        }
-
-        // Keyboard support
-        document.addEventListener('keydown', function(event) {
-            const key = event.key;
-            
-            // Prevent default behavior for calculator keys
-            if (/[0-9+\-*/=.cC]/.test(key) || key === 'Enter' || key === 'Escape' || key === 'Backspace') {
-                event.preventDefault();
-            }
-
-            // Numbers
-            if (/[0-9]/.test(key)) {
-                inputNumber(key);
-            }
-            
-            // Operators
-            if (key === '+') inputOperator('+');
-            if (key === '-') inputOperator('-');
-            if (key === '*') inputOperator('*');
-            if (key === '/') inputOperator('/');
-            
-            // Special keys
-            if (key === '.' || key === ',') inputDecimal();
-            if (key === 'Enter' || key === '=') calculate();
-            if (key === 'Escape' || key === 'c' || key === 'C') clearAll();
-            if (key === 'Backspace') deleteLast();
+  const barObserver = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.querySelectorAll('.metric-bar-fill, .tech-bar-fill').forEach((bar, i) => {
+          setTimeout(() => bar.classList.add('animated'), 300 + i * 80);
         });
+        barObserver.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.2 });
+  document.querySelectorAll('.impact-card, .tech-stack').forEach(el => barObserver.observe(el));
 
-        // Add visual feedback for button presses
-        document.querySelectorAll('.btn').forEach(button => {
-            button.addEventListener('mousedown', function() {
-                this.style.transform = 'scale(0.95)';
-            });
-            
-            button.addEventListener('mouseup', function() {
-                this.style.transform = '';
-            });
-            
-            button.addEventListener('mouseleave', function() {
-                this.style.transform = '';
-            });
-        });
+  function animateCounter(el, target, suffix='') {
+    let start = 0; const duration = 2000;
+    const step = timestamp => {
+      if (!start) start = timestamp;
+      const progress = Math.min((timestamp - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 4);
+      const val = Math.round(ease * target);
+      el.textContent = val + suffix;
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
 
-        console.log('Calculator initialized successfully!');
-        console.log('Keyboard shortcuts:');
-        console.log('- Numbers: 0-9');
-        console.log('- Operators: +, -, *, /');
-        console.log('- Decimal: . or ,');
-        console.log('- Calculate: Enter or =');
-        console.log('- Clear: Escape or C');
-        console.log('- Delete: Backspace');
+  const statObserver = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const vals = e.target.querySelectorAll('.big-stat-val');
+        const targets = [95, 3, 300, 80];
+        const suffixes = ['%', '', '+', '%'];
+        vals.forEach((el, i) => animateCounter(el, targets[i], suffixes[i]));
+        statObserver.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.5 });
+  const bigStats = document.querySelector('.big-stats');
+  if (bigStats) statObserver.observe(bigStats);
